@@ -65,30 +65,30 @@ namespace QuadTree
             /// <param name="objectToStore">A object that is to be stored in the tree.</param>
             internal void Insert(T objectToStore)
             {
-                // The lower and left bounds are closed, the right and upper open.
                 Debug.Assert(objectToStore.Coords.X >= nodeX && objectToStore.Coords.Y >= nodeY, "object out of bounds in quadtreenode");
                 Debug.Assert(objectToStore.Coords.X <= nodeX + nodeWidth && objectToStore.Coords.Y <= nodeY + nodeHeight, "object out of bounds in quadtreenode");
 
                 // Only the leaves store objects.
                 if (isLeaf)
                 {
+                    // As long as the leaf isn't at capacity, add objects to it's bucket and increase the count.
+                    if (count < maxObjects)
+                    {
+                        nodeBucket[count] = objectToStore;
+                        count++;
+                    }
                     // If the leaf is full it splits up and assigns the objects it stores to its new children.
-                    if (count >= maxObjects)
+                    else
                     {
                         nodeBucket[count] = objectToStore;
                         count++;
                         Split();
                     }
-                    else
-                    {
-                        nodeBucket[count] = objectToStore;
-                        count++;
-                    }
                 }
                 else
                 {
                     // If the node isn't a leaf the it sends the object down the tree.
-                    PushDownInsert(objectToStore);
+                    GetQuadrant(objectToStore).Insert(objectToStore);
                 }
             }
 
@@ -111,18 +111,8 @@ namespace QuadTree
 
                 for (int i = 0; i < count; i++)
                 {
-                    PushDownInsert(nodeBucket[i]);
+                    GetQuadrant(nodeBucket[i]).Insert(nodeBucket[i]); 
                 }
-            }
-
-            /// <summary>
-            /// Move something to be stored to the correct child.
-            /// </summary>
-            /// <param name="objectToStore">The position of this determines where it will be stored.</param>
-            private void PushDownInsert(T objectToStore)
-            {
-                // Depending on which quadrant the object belongs in, it is inserted into it.
-                GetQuadrant(objectToStore.Coords.X, objectToStore.Coords.Y).Insert(objectToStore);
             }
 
             /// <summary>
@@ -167,10 +157,11 @@ namespace QuadTree
                  */
                 else if (isLeaf)
                 {
-                    foreach (T aObject in nodeBucket)
-                        if (aObject != null)
-                            if (IsInRectangle(aObject, searchArea))
-                                neighbourhood.Add(aObject);
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (IsInRectangle(nodeBucket[i], searchArea))
+                            neighbourhood.Add(nodeBucket[i]);
+                    }
                 }
                 /* If the node isn't a leaf or entirely withing the search area, the search needs
                  * to be pushed down to all the quadrants that are in the search area.
@@ -197,11 +188,7 @@ namespace QuadTree
             {
                 List<Tuple<QuadTreeNode, bool>> includedQuadrants = new List<Tuple<QuadTreeNode, bool>>();
 
-                List<QuadTreeNode> allQuads = new List<QuadTreeNode>();
-                allQuads.Add(NE);
-                allQuads.Add(NW);
-                allQuads.Add(SE);
-                allQuads.Add(SW);
+                List<QuadTreeNode> allQuads = new List<QuadTreeNode> { NE, NW, SE, SW };
 
                 foreach (QuadTreeNode aQuad in allQuads)
                 {
@@ -216,7 +203,6 @@ namespace QuadTree
                         includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
                         break;
                     }
-
                     /* If a quad is entirely within the search area, no further searching needs to be done
                      * below it, so the bool to get the all the objects from the subtree is set to true.
                      */
@@ -226,7 +212,6 @@ namespace QuadTree
                         includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, true));
                         continue;
                     }
-
                     /* If any part of the search area is withing the quad it's included in the list */
                     if (IsInRectangle(searchArea.leftX, searchArea.upperY, aQuad) ||
                         IsInRectangle(searchArea.rightX, searchArea.upperY, aQuad) ||
@@ -280,7 +265,7 @@ namespace QuadTree
             /// <returns>The objects that are in the same node as the input object.</returns>
             private List<T> PushDownSearch(T searchObject)
             {
-                return GetQuadrant(searchObject.Coords.X, searchObject.Coords.Y).GetObjectsInCell(searchObject);
+                return GetQuadrant(searchObject).GetObjectsInCell(searchObject);
             }
 
             /// <summary>
@@ -305,6 +290,10 @@ namespace QuadTree
                     else
                         return SW;
                 }
+            }
+            private QuadTreeNode GetQuadrant(T aObject)
+            {
+                return GetQuadrant(aObject.Coords.X, aObject.Coords.Y);
             }
 
             /// <summary>

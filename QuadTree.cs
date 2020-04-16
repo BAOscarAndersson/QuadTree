@@ -6,12 +6,12 @@ using System.Linq;
 namespace QuadTree
 {
     /// <summary>
-    /// Stores objects in a bucket PR quadtree. The objects must implement the interface IQTstoreable.
+    /// A bucket PR quadtree.
     /// </summary>
     public class QuadTree<T> where T : IQTstoreable
     {
         // The root element of the tree, spans the entire area.
-        private readonly QuadtreeNode Root;
+        private readonly QuadTreeNode Root;
 
         // Max number of objects a node can store before it splits itself.
         private const int maxObjects = 8;
@@ -19,7 +19,7 @@ namespace QuadTree
         /// <summary>
         /// Represents a node in the tree.
         /// </summary>
-        private class QuadtreeNode
+        private class QuadTreeNode
         {
             // Only the leaves will store objects.
             private bool isLeaf = true;
@@ -30,10 +30,10 @@ namespace QuadTree
             private readonly float nodeWidth, nodeHeight;
 
             // Childrens, one for each quadrant of the area.
-            private QuadtreeNode NE { get; set; }    // North-East, or Upper Left.
-            private QuadtreeNode NW { get; set; }    // North-West, or Upper Right.
-            private QuadtreeNode SE { get; set; }    // South-East, or Lower Left.
-            private QuadtreeNode SW { get; set; }    // South-West, or Lower Right.
+            private QuadTreeNode NE { get; set; }    // North-East, or Upper Left.
+            private QuadTreeNode NW { get; set; }    // North-West, or Upper Right.
+            private QuadTreeNode SE { get; set; }    // South-East, or Lower Left.
+            private QuadTreeNode SW { get; set; }    // South-West, or Lower Right.
 
             // If the node is a leaf it can contain maxObjects number of objects.
             private T[] nodeBucket;
@@ -46,7 +46,7 @@ namespace QuadTree
             /// <param name="widthOfArea">The vertical size of the rectangle.</param>
             /// <param name="heightOfArea">The horizontal size of the rectangle.</param>
             /// <param name="parent">The larger region the node lies in.</param>
-            internal QuadtreeNode(float xPos, float yPos, float widthOfArea, float heightOfArea)
+            internal QuadTreeNode(float xPos, float yPos, float widthOfArea, float heightOfArea)
             {
                 this.nodeX = xPos;
                 this.nodeY = yPos;
@@ -66,14 +66,14 @@ namespace QuadTree
             internal void Insert(T objectToStore)
             {
                 // The lower and left bounds are closed, the right and upper open.
-                Debug.Assert(objectToStore.Coords.X >= nodeX && objectToStore.Coords.Y > nodeY, "object out of bounds in quadtreenode");
-                Debug.Assert(objectToStore.Coords.X < nodeX + nodeWidth && objectToStore.Coords.Y <= nodeY + nodeHeight, "object out of bounds in quadtreenode");
+                Debug.Assert(objectToStore.Coords.X >= nodeX && objectToStore.Coords.Y >= nodeY, "object out of bounds in quadtreenode");
+                Debug.Assert(objectToStore.Coords.X <= nodeX + nodeWidth && objectToStore.Coords.Y <= nodeY + nodeHeight, "object out of bounds in quadtreenode");
 
                 // Only the leaves store objects.
                 if (isLeaf)
                 {
                     // If the leaf is full it splits up and assigns the objects it stores to its new children.
-                    if (count == maxObjects)
+                    if (count >= maxObjects)
                     {
                         nodeBucket[count] = objectToStore;
                         count++;
@@ -104,10 +104,10 @@ namespace QuadTree
                 float heightHalf = nodeHeight / 2;
 
                 // The nodes will end up at different places depending on which quadrant they represent.
-                this.NE = new QuadtreeNode(nodeX, nodeY, widthHalf, heightHalf);
-                this.NW = new QuadtreeNode(nodeX + widthHalf, nodeY, widthHalf, heightHalf);
-                this.SE = new QuadtreeNode(nodeX, nodeY + heightHalf, widthHalf, heightHalf);
-                this.SW = new QuadtreeNode(nodeX + widthHalf, nodeY + heightHalf, widthHalf, heightHalf);
+                this.NE = new QuadTreeNode(nodeX, nodeY, widthHalf, heightHalf);
+                this.NW = new QuadTreeNode(nodeX + widthHalf, nodeY, widthHalf, heightHalf);
+                this.SE = new QuadTreeNode(nodeX, nodeY + heightHalf, widthHalf, heightHalf);
+                this.SW = new QuadTreeNode(nodeX + widthHalf, nodeY + heightHalf, widthHalf, heightHalf);
 
                 for (int i = 0; i < count; i++)
                 {
@@ -132,9 +132,8 @@ namespace QuadTree
             /// <returns>The objects in the area of the inputed object.</returns>
             internal List<T> GetObjectsInCell(T searchObject)
             {
-                // The lower and left bounds are closed, the right and upper open.
-                Debug.Assert(searchObject.Coords.X >= nodeX && searchObject.Coords.Y > nodeY, "object out of bounds in quadtreenode");
-                Debug.Assert(searchObject.Coords.X < nodeX + nodeWidth && searchObject.Coords.Y <= nodeY + nodeHeight, "object out of bounds in quadtreenode");
+                Debug.Assert(searchObject.Coords.X >= nodeX && searchObject.Coords.Y >= nodeY, "object out of bounds in quadtreenode");
+                Debug.Assert(searchObject.Coords.X <= nodeX + nodeWidth && searchObject.Coords.Y <= nodeY + nodeHeight, "object out of bounds in quadtreenode");
 
                 if (isLeaf)
                 {
@@ -146,31 +145,43 @@ namespace QuadTree
                 }
             }
 
-            /// <summary>Gets all the objects that lies within the inputed rectangle,
-            /// maybe plus some that are close to it.
+            /// <summary>
+            /// Gets all the objects that lies within the inputed rectangle.
             /// </summary>
-            /// <param name="searchArea"></param>
+            /// <param name="searchArea">Objects withing this rectangle is returned.</param>
+            /// <param name="theWholeThing">If the whole node is in the area set this to true.</param>
             /// <returns>A list of the objects sort of close to the inputed rectangle.</returns>
-            internal List<T> GetNeighbourhood(ref SimpleRect searchArea)
+            internal List<T> GetNeighbourhood(SimpleRect searchArea, bool theWholeThing)
             {
                 List<T> neighbourhood = new List<T>();
 
-                if (isLeaf)
+                /* If the entire node is inside the search area no further searching
+                 * need be done, and all the objects stored in or under are returned.
+                 */
+                if (theWholeThing)
                 {
-                    neighbourhood = nodeBucket.ToList();
+                    neighbourhood.AddRange(GetAllObjectsUnder());
                 }
+                /* If the node is a leaf, all the objects within are checked to see if they
+                 * are inside of the search area.
+                 */
+                else if (isLeaf)
+                {
+                    foreach (T aObject in nodeBucket)
+                        if (aObject != null)
+                            if (IsInRectangle(aObject, searchArea))
+                                neighbourhood.Add(aObject);
+                }
+                /* If the node isn't a leaf or entirely withing the search area, the search needs
+                 * to be pushed down to all the quadrants that are in the search area.
+                 * The returned results from that must then be combined before they are returned.
+                 */
                 else
                 {
-                    /* If the node isn't a leaf the search needs to be push down to all the quadrants
-                     * that are covered by the search area. The returned results must then be combined
-                     * before they are returned.
-                     */
-                    List<QuadtreeNode> includedQuadrants = new List<QuadtreeNode>();
+                    List<Tuple<QuadTreeNode, bool>> includedQuadrants = GetIncludedQuads(searchArea);
 
-                    includedQuadrants = GetIncludedQuads(ref searchArea);
-
-                    foreach (QuadtreeNode quadrant in includedQuadrants)
-                        neighbourhood.AddRange(quadrant.GetNeighbourhood(ref searchArea));
+                    foreach (Tuple<QuadTreeNode, bool> quadrant in includedQuadrants)
+                        neighbourhood.AddRange(quadrant.Item1.GetNeighbourhood(searchArea, quadrant.Item2));
                 }
 
                 return neighbourhood;
@@ -179,51 +190,88 @@ namespace QuadTree
             /// <summary>
             /// Calculates which quadrants are in the search area.
             /// </summary>
-            /// <param name="searchArea">A rectangular area.</param>
-            /// <returns>A list of quadrants that are in the area.</returns>
-            private List<QuadtreeNode> GetIncludedQuads(ref SimpleRect searchArea)
+            /// <param name="searchArea">Objects withing this rectangle is returned.</param>
+            /// <returns>A list of quadrants that are in the area 
+            /// and a bool that is true if they are entirely within it.</returns>
+            private List<Tuple<QuadTreeNode, bool>> GetIncludedQuads(SimpleRect searchArea)
             {
-                /* The computation of all this is rather involved but the gist of it is this:
-                 * You check where one corner(upper left) of the rectangle lies and based on that
-                 * you can make some assumptions where the rectangle are. I.e. if the upper left
-                 * corner is in the lower right quadrant the whole search rectangle must lie in that
-                 * quadrant.
-                 * Except in that example case you then have to check where a second corner 
-                 * (dependent on the first check) of the search area lies and based on where that
-                 * one lies, the result follows.
-                 */
+                List<Tuple<QuadTreeNode, bool>> includedQuadrants = new List<Tuple<QuadTreeNode, bool>>();
 
-                List<QuadtreeNode> includedQuadrants = new List<QuadtreeNode>();
-                includedQuadrants.Add(GetQuadrant(searchArea.leftX, searchArea.upperY));
+                List<QuadTreeNode> allQuads = new List<QuadTreeNode>();
+                allQuads.Add(NE);
+                allQuads.Add(NW);
+                allQuads.Add(SE);
+                allQuads.Add(SW);
 
-                if (includedQuadrants[0] == SW)
+                foreach (QuadTreeNode aQuad in allQuads)
                 {
-                    return includedQuadrants;
-                }
-                else if (includedQuadrants[0] == NE)
-                {
-                    includedQuadrants.Add(GetQuadrant(searchArea.rightX, searchArea.lowerY));
+                    if (aQuad == null)
+                        continue;
 
-                    if (includedQuadrants[1] == SW)
+                    /* If the searchArea is entirely withing a quad, it can not be in other quads, 
+                     * so break out of the loop.*/
+                    if (IsInRectangle(searchArea.leftX, searchArea.upperY, aQuad) &&
+                        IsInRectangle(searchArea.rightX, searchArea.lowerY, aQuad))
                     {
-                        includedQuadrants.Add(NW);
-                        includedQuadrants.Add(SE);
+                        includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
+                        break;
+                    }
+
+                    /* If a quad is entirely within the search area, no further searching needs to be done
+                     * below it, so the bool to get the all the objects from the subtree is set to true.
+                     */
+                    if (IsInRectangle(aQuad.nodeX, aQuad.nodeY, searchArea) &&
+                        IsInRectangle(aQuad.nodeX + aQuad.nodeWidth, aQuad.nodeY + aQuad.nodeHeight, searchArea))
+                    {
+                        includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, true));
+                        continue;
+                    }
+
+                    /* If any part of the search area is withing the quad it's included in the list */
+                    if (IsInRectangle(searchArea.leftX, searchArea.upperY, aQuad) ||
+                        IsInRectangle(searchArea.rightX, searchArea.upperY, aQuad) ||
+                        IsInRectangle(searchArea.leftX, searchArea.lowerY, aQuad) ||
+                        IsInRectangle(searchArea.rightX, searchArea.lowerY, aQuad))
+                    {
+                        includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
                     }
                 }
-                else if (includedQuadrants[0] == NW)
-                {
-                    includedQuadrants.Add(GetQuadrant(searchArea.leftX, searchArea.lowerY));
-                }
-                else if (includedQuadrants[0] == SE)
-                {
-                    includedQuadrants.Add(GetQuadrant(searchArea.rightX, searchArea.upperY));
-                }
-
-                // In some cases the above logic returns doublettes.
-                includedQuadrants = includedQuadrants.Distinct().ToList();
 
                 return includedQuadrants;
             }
+
+            /// <summary>
+            /// Checks if input object is within a rectangular area.
+            /// </summary>
+            /// <param name="aObject">Object one is looking for to see if it is inside of the area.</param>
+            /// <param name="searchArea">The are one is looking at to see if the object is inside of.</param>
+            /// <returns>True if the object is in the area, false if it's outside.</returns>
+            private bool IsInRectangle(T aObject, SimpleRect searchArea)
+            {
+                return IsInRectangle(aObject.Coords.X, aObject.Coords.Y, searchArea.leftX, searchArea.rightX, searchArea.upperY, searchArea.lowerY);
+            }
+            #region IsInRectangle overloads
+            private bool IsInRectangle(float x, float y, QuadTreeNode aNode)
+            {
+                return IsInRectangle(x, y, aNode.nodeX, aNode.nodeX + aNode.nodeWidth, aNode.nodeY, aNode.nodeY + aNode.nodeHeight);
+            }
+
+            private bool IsInRectangle(float x, float y, SimpleRect searchArea)
+            {
+                return IsInRectangle(x, y, searchArea.leftX, searchArea.rightX, searchArea.upperY, searchArea.lowerY);
+            }
+
+            private bool IsInRectangle(float x, float y, float leftX, float rightX, float upperY, float lowerY)
+            {
+                if (x >= leftX &&
+                    x <= rightX &&
+                    y >= upperY &&
+                    y <= lowerY)
+                    return true;
+                else
+                    return false;
+            }
+            #endregion
 
             /// <summary>
             /// Figures out to which child the inputed object belongs and gives the search to it.
@@ -241,34 +289,57 @@ namespace QuadTree
             /// <param name="x">The horizontal position where the object lies.</param>
             /// <param name="y">The horizontal position where the object lies.</param>
             /// <returns>The node to which the input belong.</returns>
-            private QuadtreeNode GetQuadrant(float x, float y)
+            private QuadTreeNode GetQuadrant(float x, float y)
             {
-                QuadtreeNode searchedForNode;
-
                 if (x <= nodeX + nodeWidth / 2)
                 {
                     if (y <= nodeY + nodeHeight / 2)
-                        searchedForNode = NE;
+                        return NE;
                     else
-                        searchedForNode = SE;
+                        return SE;
                 }
                 else
                 {
                     if (y <= nodeY + nodeHeight / 2)
-                        searchedForNode = NW;
+                        return NW;
                     else
-                        searchedForNode = SW;
+                        return SW;
                 }
+            }
 
-                return searchedForNode;
+            /// <summary>
+            /// Returns all objects stored in this node/nodes under this node.
+            /// </summary>
+            /// <returns>A list of objects that are stored under this node.</returns>
+            private List<T> GetAllObjectsUnder()
+            {
+                if (isLeaf)
+                {
+                    return nodeBucket.ToList();
+                }
+                else
+                {
+                    List<T> allObjects = new List<T>();
+
+                    allObjects.AddRange(NE.GetAllObjectsUnder());
+                    allObjects.AddRange(NW.GetAllObjectsUnder());
+                    allObjects.AddRange(SE.GetAllObjectsUnder());
+                    allObjects.AddRange(SW.GetAllObjectsUnder());
+
+                    return allObjects;
+                }
             }
         }
 
-        // When the QuadTree is made a root node is created.
+        /// <summary>
+        /// When the QuadTree is made a root node is created with the area of the input.
+        /// </summary>
+        /// <param name="widthOfArea">The quad tree will cover an area of this width.</param>
+        /// <param name="heightOfArea">The quad tree will cover an area of this height.</param>
         public QuadTree(float widthOfArea, float heightOfArea)
         {
             // Since the root spans the entire area it starts at origo(Left upper corner of screen).
-            this.Root = new QuadtreeNode(0, 0, widthOfArea, heightOfArea);
+            this.Root = new QuadTreeNode(0, 0, widthOfArea, heightOfArea);
         }
 
         /// <summary>
@@ -298,9 +369,9 @@ namespace QuadTree
         /// </summary>
         /// <param name="searchArea">A reactangular area to search for objects.</param>
         /// <returns>A list of objects that lies "close to" the inputted area.</returns>
-        public List<T> GetNeighbourhood(ref SimpleRect searchArea)
+        public List<T> GetNeighbourhood(SimpleRect searchArea)
         {
-            return Root.GetNeighbourhood(ref searchArea);
+            return Root.GetNeighbourhood(searchArea, false);
         }
     }
 
@@ -309,10 +380,10 @@ namespace QuadTree
     /// </summary>
     public struct SimpleRect
     {
-        readonly internal float upperY;
-        readonly internal float lowerY;
-        readonly internal float leftX;
-        readonly internal float rightX;
+        readonly public float upperY;
+        readonly public float lowerY;
+        readonly public float leftX;
+        readonly public float rightX;
 
         public SimpleRect(float setUpperY, float setLowerY, float setLeftX, float setRightX)
         {

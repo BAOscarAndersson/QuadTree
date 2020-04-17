@@ -213,10 +213,14 @@ namespace QuadTree
                         continue;
                     }
                     /* If any part of the search area is withing the quad it's included in the list */
-                    if (IsInRectangle(searchArea.leftX, searchArea.upperY, aQuad) ||
-                        IsInRectangle(searchArea.rightX, searchArea.upperY, aQuad) ||
-                        IsInRectangle(searchArea.leftX, searchArea.lowerY, aQuad) ||
-                        IsInRectangle(searchArea.rightX, searchArea.lowerY, aQuad))
+                    //if (IsInRectangle(searchArea.leftX, searchArea.upperY, aQuad) ||
+                    //    IsInRectangle(searchArea.rightX, searchArea.upperY, aQuad) ||
+                    //    IsInRectangle(searchArea.leftX, searchArea.lowerY, aQuad) ||
+                    //    IsInRectangle(searchArea.rightX, searchArea.lowerY, aQuad))
+                    //{
+                    //    includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
+                    //}
+                    if (IsPartiallyInRectangle(searchArea, aQuad))
                     {
                         includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
                     }
@@ -257,6 +261,30 @@ namespace QuadTree
                     return false;
             }
             #endregion
+
+            private bool IsPartiallyInRectangle(SimpleRect searchArea, QuadTreeNode aQuad)
+            {
+                if (IsInXInterval(searchArea.leftX, aQuad) ||
+                    IsInXInterval(searchArea.rightX, aQuad) ||
+                    IsInYInterval(searchArea.upperY, aQuad) ||
+                    IsInYInterval(searchArea.lowerY, aQuad))
+                    return true;
+                return false;
+            }
+
+            private bool IsInXInterval(float x, QuadTreeNode aQuad)
+            {
+                if (x <= aQuad.nodeX + aQuad.nodeWidth && x >= aQuad.nodeX)
+                    return true;
+                return false;
+            }
+
+            private bool IsInYInterval(float y, QuadTreeNode aQuad)
+            {
+                if (y <= aQuad.nodeY + aQuad.nodeHeight && y >= aQuad.nodeY)
+                    return true;
+                return false;
+            }
 
             /// <summary>
             /// Figures out to which child the inputed object belongs and gives the search to it.

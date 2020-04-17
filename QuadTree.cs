@@ -213,13 +213,7 @@ namespace QuadTree
                         continue;
                     }
                     /* If any part of the search area is withing the quad it's included in the list */
-                    //if (IsInRectangle(searchArea.leftX, searchArea.upperY, aQuad) ||
-                    //    IsInRectangle(searchArea.rightX, searchArea.upperY, aQuad) ||
-                    //    IsInRectangle(searchArea.leftX, searchArea.lowerY, aQuad) ||
-                    //    IsInRectangle(searchArea.rightX, searchArea.lowerY, aQuad))
-                    //{
-                    //    includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
-                    //}
+
                     if (IsPartiallyInRectangle(searchArea, aQuad))
                     {
                         includedQuadrants.Add(new Tuple<QuadTreeNode, bool>(aQuad, false));
@@ -382,7 +376,7 @@ namespace QuadTree
         /// <summary>
         /// Gets all the objects that lies within nodes that are partially covered by the inputed 
         /// rectangular area.
-        /// A bad distance measure.
+        /// A better distance measure than GetObjectsInCell.
         /// </summary>
         /// <param name="searchArea">A reactangular area to search for objects.</param>
         /// <returns>A list of objects that lies "close to" the inputted area.</returns>

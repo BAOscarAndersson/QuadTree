@@ -256,6 +256,12 @@ namespace QuadTree
             }
             #endregion
 
+            /// <summary>
+            /// Checks wether some part of the rectangle is inside of the quadrant.
+            /// </summary>
+            /// <param name="searchArea">The rectangle that will be checked.</param>
+            /// <param name="aQuad">The quad to check against.</param>
+            /// <returns>True if some part of the rectangle is in the quad, false otherwise.</returns>
             private bool IsPartiallyInRectangle(SimpleRect searchArea, QuadTreeNode aQuad)
             {
                 if (IsInXInterval(searchArea.leftX, aQuad) ||
@@ -266,6 +272,12 @@ namespace QuadTree
                 return false;
             }
 
+            /// <summary>
+            /// Checks if the input float is inside the  horizontal span of the quad.
+            /// </summary>
+            /// <param name="x">The coordinate to check if it's inside the quads horizontal span.</param>
+            /// <param name="aQuad">The quad to check against.</param>
+            /// <returns>True if input is inside the quad.</returns>
             private bool IsInXInterval(float x, QuadTreeNode aQuad)
             {
                 if (x <= aQuad.nodeX + aQuad.nodeWidth && x >= aQuad.nodeX)
@@ -273,6 +285,12 @@ namespace QuadTree
                 return false;
             }
 
+            /// <summary>
+            /// Checks if the input float is inside the  vertical span of the quad.
+            /// </summary>
+            /// <param name="y">The coordinate to check if it's inside the quads vertical span.</param>
+            /// <param name="aQuad">The quad to check against.</param>
+            /// <returns>True if input is inside the quad.</returns>
             private bool IsInYInterval(float y, QuadTreeNode aQuad)
             {
                 if (y <= aQuad.nodeY + aQuad.nodeHeight && y >= aQuad.nodeY)
@@ -340,6 +358,7 @@ namespace QuadTree
                     return allObjects;
                 }
             }
+
         }
 
         /// <summary>

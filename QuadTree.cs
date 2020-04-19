@@ -204,7 +204,7 @@ namespace QuadTree
                         break;
                     }
                     /* If a quad is entirely within the search area, no further searching needs to be done
-                     * below it, so the bool to get the all the objects from the subtree is set to true.
+                     * below it, so the bool to get all the objects from the subtree is set to true.
                      */
                     if (IsInRectangle(aQuad.nodeX, aQuad.nodeY, searchArea) &&
                         IsInRectangle(aQuad.nodeX + aQuad.nodeWidth, aQuad.nodeY + aQuad.nodeHeight, searchArea))

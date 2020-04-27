@@ -127,7 +127,7 @@ namespace QuadTree
 
                 if (isLeaf)
                 {
-                    return nodeBucket.ToList();
+                    return nodeBucket.Where(x => x != null).ToList();
                 }
                 else
                 {
@@ -344,7 +344,7 @@ namespace QuadTree
             {
                 if (isLeaf)
                 {
-                    return nodeBucket.ToList();
+                    return nodeBucket.Where(x => x != null).ToList();
                 }
                 else
                 {
